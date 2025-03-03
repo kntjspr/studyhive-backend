@@ -1,11 +1,75 @@
 import { Router } from "express";
-import { AuthController } from "../controllers/auth.controller";
+import { z } from "zod";
+import { AuthService } from "../services/auth.service";
+import { validateRequest } from "../middleware/validateRequest";
+import { Request, Response, NextFunction } from "express";
+import { LearningStyle } from "../types/models";
 
 const router = Router();
-const authController = new AuthController();
+const authService = new AuthService();
 
-router.post("/signup", authController.signUp.bind(authController));
-router.post("/signin", authController.signIn.bind(authController));
-router.post("/forgot-password", authController.forgotPassword.bind(authController));
+const signUpSchema = z.object({
+  body: z.object({
+    email: z.string().email("Invalid email format"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    fullName: z.string().min(1, "Full name is required"),
+    learningStyle: z.nativeEnum(LearningStyle).optional(),
+    academicInterests: z.array(z.string()).optional(),
+  }),
+});
+
+const signInSchema = z.object({
+  body: z.object({
+    email: z.string().email("Invalid email format"),
+    password: z.string().min(1, "Password is required"),
+  }),
+});
+
+const forgotPasswordSchema = z.object({
+  body: z.object({
+    email: z.string().email("Invalid email format"),
+  }),
+});
+
+router.post(
+  "/signup",
+  validateRequest(signUpSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await authService.signUp(req.body);
+      res.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  "/signin",
+  validateRequest(signInSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { email, password } = req.body;
+      const result = await authService.signIn(email, password);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  "/forgot-password",
+  validateRequest(forgotPasswordSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { email } = req.body;
+      const result = await authService.forgotPassword(email);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 export default router; 

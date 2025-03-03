@@ -1,0 +1,373 @@
+{
+  "info": {
+    "name": "StudyHive API",
+    "description": "API collection for the StudyHive tutoring platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Sign Up",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/signup",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "signup"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"securepassword\",\n  \"fullName\": \"John Doe\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Sign In",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/signin",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "signin"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"securepassword\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile Management",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/profiles/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["profiles", "{{user_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/profiles/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["profiles", "{{user_id}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"John Doe\",\n  \"avatarUrl\": \"https://example.com/avatar.jpg\",\n  \"bio\": \"Passionate about learning\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tutor Management",
+      "item": [
+        {
+          "name": "Become Tutor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tutors",
+              "host": ["{{base_url}}"],
+              "path": ["tutors"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hourlyRate\": 50,\n  \"yearsOfExperience\": 5,\n  \"educationBackground\": \"Master's in Computer Science\",\n  \"subjects\": [\n    {\n      \"id\": \"{{subject_id}}\",\n      \"expertiseLevel\": 5\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Tutor Profile",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/tutors/{{tutor_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tutors", "{{tutor_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Tutor Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tutors/{{tutor_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tutors", "{{tutor_id}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hourlyRate\": 60,\n  \"yearsOfExperience\": 6,\n  \"educationBackground\": \"PhD in Computer Science\",\n  \"availability\": {\n    \"schedule\": {\n      \"monday\": [\"09:00-12:00\", \"14:00-17:00\"]\n    }\n  }\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Study Sessions",
+      "item": [
+        {
+          "name": "Create Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sessions",
+              "host": ["{{base_url}}"],
+              "path": ["sessions"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tutorId\": \"{{tutor_id}}\",\n  \"subjectId\": \"{{subject_id}}\",\n  \"startTime\": \"2024-03-01T10:00:00Z\",\n  \"endTime\": \"2024-03-01T11:00:00Z\",\n  \"notes\": \"Introduction to React Hooks\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Session",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/sessions/{{session_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["sessions", "{{session_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Session Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sessions/{{session_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["sessions", "{{session_id}}", "status"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Session Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sessions/{{session_id}}/reviews",
+              "host": ["{{base_url}}"],
+              "path": ["sessions", "{{session_id}}", "reviews"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Excellent session! Very helpful and clear explanations.\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat Messages",
+      "item": [
+        {
+          "name": "Get Session Messages",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/sessions/{{session_id}}/messages",
+              "host": ["{{base_url}}"],
+              "path": ["sessions", "{{session_id}}", "messages"]
+            }
+          }
+        },
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sessions/{{session_id}}/messages",
+              "host": ["{{base_url}}"],
+              "path": ["sessions", "{{session_id}}", "messages"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Hi, I have a question about the last topic we covered.\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get User Notifications",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/notifications?read=false&limit=10&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["notifications"],
+              "query": [
+                {
+                  "key": "read",
+                  "value": "false"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mark Notification as Read",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{base_url}}/notifications/{{notification_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "{{notification_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Subjects",
+      "item": [
+        {
+          "name": "Get All Subjects",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/subjects",
+              "host": ["{{base_url}}"],
+              "path": ["subjects"]
+            }
+          }
+        },
+        {
+          "name": "Get Subject",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/subjects/{{subject_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["subjects", "{{subject_id}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+} 

@@ -2,9 +2,11 @@
 create extension if not exists "uuid-ossp";
 
 -- Create custom types
-create type user_role as enum ('student', 'tutor', 'admin');
-create type study_session_status as enum ('scheduled', 'ongoing', 'completed', 'cancelled');
-create type notification_type as enum ('session_reminder', 'session_request', 'session_update', 'message');
+create type user_role as enum ('student', 'admin');
+create type study_group_status as enum ('active', 'inactive', 'archived');
+create type learning_style as enum ('visual', 'auditory', 'reading_writing', 'kinesthetic');
+create type notification_type as enum ('group_invite', 'session_reminder', 'resource_shared', 'message');
+create type resource_type as enum ('note', 'link', 'file', 'quiz', 'flashcard');
 
 -- Profiles table (extends auth.users)
 create table profiles (
@@ -14,71 +16,98 @@ create table profiles (
     role user_role default 'student' not null,
     avatar_url text,
     bio text,
+    learning_style learning_style,
+    academic_interests text[],
+    availability_schedule jsonb,
     created_at timestamptz default timezone('utc'::text, now()) not null,
     updated_at timestamptz default timezone('utc'::text, now()) not null
 );
 
--- Subjects table
+-- Subjects/Courses table
 create table subjects (
     id uuid default uuid_generate_v4() primary key,
     name text not null unique,
     description text,
+    difficulty_level integer check (difficulty_level between 1 and 5),
     created_at timestamptz default timezone('utc'::text, now()) not null
 );
 
--- Tutor profiles (extends profiles)
-create table tutor_profiles (
-    tutor_id uuid references profiles(id) on delete cascade primary key,
-    hourly_rate decimal(10,2) not null,
-    years_of_experience integer,
-    education_background text,
-    availability_schedule jsonb,
-    average_rating decimal(3,2),
-    total_sessions integer default 0,
+-- Study Groups table
+create table study_groups (
+    id uuid default uuid_generate_v4() primary key,
+    name text not null,
+    description text,
+    subject_id uuid references subjects(id) on delete cascade,
+    creator_id uuid references profiles(id) on delete cascade,
+    max_members integer default 10,
+    status study_group_status default 'active' not null,
+    meeting_schedule jsonb,
     created_at timestamptz default timezone('utc'::text, now()) not null,
     updated_at timestamptz default timezone('utc'::text, now()) not null
 );
 
--- Tutor subjects (many-to-many relationship)
-create table tutor_subjects (
-    tutor_id uuid references tutor_profiles(tutor_id) on delete cascade,
-    subject_id uuid references subjects(id) on delete cascade,
-    expertise_level integer check (expertise_level between 1 and 5),
-    created_at timestamptz default timezone('utc'::text, now()) not null,
-    primary key (tutor_id, subject_id)
+-- Group Members (many-to-many relationship)
+create table group_members (
+    group_id uuid references study_groups(id) on delete cascade,
+    user_id uuid references profiles(id) on delete cascade,
+    joined_at timestamptz default timezone('utc'::text, now()) not null,
+    primary key (group_id, user_id)
 );
 
--- Study sessions
+-- Study Resources
+create table study_resources (
+    id uuid default uuid_generate_v4() primary key,
+    title text not null,
+    description text,
+    type resource_type not null,
+    content jsonb,
+    url text,
+    group_id uuid references study_groups(id) on delete cascade,
+    creator_id uuid references profiles(id) on delete cascade,
+    created_at timestamptz default timezone('utc'::text, now()) not null,
+    updated_at timestamptz default timezone('utc'::text, now()) not null
+);
+
+-- Study Sessions
 create table study_sessions (
     id uuid default uuid_generate_v4() primary key,
-    student_id uuid references profiles(id) on delete cascade,
-    tutor_id uuid references tutor_profiles(tutor_id) on delete cascade,
-    subject_id uuid references subjects(id) on delete cascade,
-    status study_session_status default 'scheduled' not null,
+    group_id uuid references study_groups(id) on delete cascade,
+    title text not null,
+    description text,
     start_time timestamptz not null,
     end_time timestamptz not null,
     meeting_link text,
-    price decimal(10,2) not null,
-    notes text,
     created_at timestamptz default timezone('utc'::text, now()) not null,
     updated_at timestamptz default timezone('utc'::text, now()) not null
 );
 
--- Session reviews
-create table session_reviews (
+-- Session Attendance
+create table session_attendance (
+    session_id uuid references study_sessions(id) on delete cascade,
+    user_id uuid references profiles(id) on delete cascade,
+    status text check (status in ('attending', 'declined', 'maybe')),
+    created_at timestamptz default timezone('utc'::text, now()) not null,
+    primary key (session_id, user_id)
+);
+
+-- Tasks
+create table tasks (
     id uuid default uuid_generate_v4() primary key,
-    session_id uuid references study_sessions(id) on delete cascade unique,
-    student_id uuid references profiles(id) on delete cascade,
-    rating integer check (rating between 1 and 5) not null,
-    comment text,
+    title text not null,
+    description text,
+    due_date timestamptz,
+    status text check (status in ('pending', 'in_progress', 'completed')),
+    group_id uuid references study_groups(id) on delete cascade,
+    assignee_id uuid references profiles(id) on delete set null,
+    creator_id uuid references profiles(id) on delete cascade,
     created_at timestamptz default timezone('utc'::text, now()) not null,
     updated_at timestamptz default timezone('utc'::text, now()) not null
 );
 
--- Chat messages
+-- Chat Messages
 create table chat_messages (
     id uuid default uuid_generate_v4() primary key,
-    session_id uuid references study_sessions(id) on delete cascade,
+    group_id uuid references study_groups(id) on delete cascade,
     sender_id uuid references profiles(id) on delete cascade,
     content text not null,
     created_at timestamptz default timezone('utc'::text, now()) not null
@@ -97,10 +126,13 @@ create table notifications (
 );
 
 -- Create indexes for better query performance
-create index idx_study_sessions_student_id on study_sessions(student_id);
-create index idx_study_sessions_tutor_id on study_sessions(tutor_id);
-create index idx_study_sessions_status on study_sessions(status);
-create index idx_chat_messages_session_id on chat_messages(session_id);
+create index idx_group_members_user_id on group_members(user_id);
+create index idx_group_members_group_id on group_members(group_id);
+create index idx_study_resources_group_id on study_resources(group_id);
+create index idx_study_sessions_group_id on study_sessions(group_id);
+create index idx_tasks_group_id on tasks(group_id);
+create index idx_tasks_assignee_id on tasks(assignee_id);
+create index idx_chat_messages_group_id on chat_messages(group_id);
 create index idx_notifications_user_id on notifications(user_id);
 create index idx_notifications_read on notifications(read);
 
@@ -114,57 +146,96 @@ create policy "Users can update own profile"
     on profiles for update
     using (auth.uid() = id);
 
--- Tutor profiles
-alter table tutor_profiles enable row level security;
-create policy "Public tutor profiles are viewable by everyone"
-    on tutor_profiles for select
+-- Study Groups
+alter table study_groups enable row level security;
+create policy "Study groups are viewable by everyone"
+    on study_groups for select
     using (true);
-create policy "Tutors can update own profile"
-    on tutor_profiles for update
-    using (auth.uid() = tutor_id);
+create policy "Members can update their groups"
+    on study_groups for update
+    using (
+        exists (
+            select 1 from group_members
+            where group_id = study_groups.id
+            and user_id = auth.uid()
+        )
+    );
 
--- Study sessions
+-- Group Members
+alter table group_members enable row level security;
+create policy "Group members are viewable by group members"
+    on group_members for select
+    using (
+        exists (
+            select 1 from group_members gm
+            where gm.group_id = group_members.group_id
+            and gm.user_id = auth.uid()
+        )
+    );
+
+-- Study Resources
+alter table study_resources enable row level security;
+create policy "Resources are viewable by group members"
+    on study_resources for select
+    using (
+        exists (
+            select 1 from group_members
+            where group_id = study_resources.group_id
+            and user_id = auth.uid()
+        )
+    );
+create policy "Group members can create resources"
+    on study_resources for insert
+    with check (
+        exists (
+            select 1 from group_members
+            where group_id = study_resources.group_id
+            and user_id = auth.uid()
+        )
+    );
+
+-- Study Sessions
 alter table study_sessions enable row level security;
-create policy "Users can view their own sessions"
+create policy "Sessions are viewable by group members"
     on study_sessions for select
-    using (auth.uid() = student_id or auth.uid() = tutor_id);
-create policy "Users can create sessions"
-    on study_sessions for insert
-    with check (auth.uid() = student_id);
-create policy "Users can update their own sessions"
-    on study_sessions for update
-    using (auth.uid() = student_id or auth.uid() = tutor_id);
+    using (
+        exists (
+            select 1 from group_members
+            where group_id = study_sessions.group_id
+            and user_id = auth.uid()
+        )
+    );
 
--- Session reviews
-alter table session_reviews enable row level security;
-create policy "Public reviews are viewable by everyone"
-    on session_reviews for select
-    using (true);
-create policy "Students can create reviews for their sessions"
-    on session_reviews for insert
-    with check (auth.uid() = student_id);
-create policy "Students can update their own reviews"
-    on session_reviews for update
-    using (auth.uid() = student_id);
+-- Tasks
+alter table tasks enable row level security;
+create policy "Tasks are viewable by group members"
+    on tasks for select
+    using (
+        exists (
+            select 1 from group_members
+            where group_id = tasks.group_id
+            and user_id = auth.uid()
+        )
+    );
 
--- Chat messages
+-- Chat Messages
 alter table chat_messages enable row level security;
-create policy "Users can view messages from their sessions"
+create policy "Messages are viewable by group members"
     on chat_messages for select
     using (
         exists (
-            select 1 from study_sessions
-            where id = chat_messages.session_id
-            and (student_id = auth.uid() or tutor_id = auth.uid())
+            select 1 from group_members
+            where group_id = chat_messages.group_id
+            and user_id = auth.uid()
         )
     );
-create policy "Users can send messages in their sessions"
+create policy "Group members can send messages"
     on chat_messages for insert
     with check (
         exists (
-            select 1 from study_sessions
-            where id = chat_messages.session_id
-            and (student_id = auth.uid() or tutor_id = auth.uid())
+            select 1 from group_members
+            where group_id = chat_messages.group_id
+            and user_id = auth.uid()
         )
     );
 
@@ -172,9 +243,6 @@ create policy "Users can send messages in their sessions"
 alter table notifications enable row level security;
 create policy "Users can view their own notifications"
     on notifications for select
-    using (auth.uid() = user_id);
-create policy "Users can update their own notifications"
-    on notifications for update
     using (auth.uid() = user_id);
 
 -- Triggers for updated_at timestamps
@@ -191,8 +259,13 @@ create trigger update_profiles_updated_at
     for each row
     execute function update_updated_at_column();
 
-create trigger update_tutor_profiles_updated_at
-    before update on tutor_profiles
+create trigger update_study_groups_updated_at
+    before update on study_groups
+    for each row
+    execute function update_updated_at_column();
+
+create trigger update_study_resources_updated_at
+    before update on study_resources
     for each row
     execute function update_updated_at_column();
 
@@ -201,32 +274,7 @@ create trigger update_study_sessions_updated_at
     for each row
     execute function update_updated_at_column();
 
-create trigger update_session_reviews_updated_at
-    before update on session_reviews
+create trigger update_tasks_updated_at
+    before update on tasks
     for each row
-    execute function update_updated_at_column();
-
--- Function to update tutor ratings
-create or replace function update_tutor_rating()
-returns trigger as $$
-begin
-    update tutor_profiles
-    set average_rating = (
-        select avg(rating)::decimal(3,2)
-        from session_reviews sr
-        join study_sessions ss on sr.session_id = ss.id
-        where ss.tutor_id = new.tutor_id
-    )
-    where tutor_id = (
-        select tutor_id
-        from study_sessions
-        where id = new.session_id
-    );
-    return new;
-end;
-$$ language plpgsql;
-
-create trigger update_tutor_rating_on_review
-    after insert or update on session_reviews
-    for each row
-    execute function update_tutor_rating(); 
+    execute function update_updated_at_column(); 
