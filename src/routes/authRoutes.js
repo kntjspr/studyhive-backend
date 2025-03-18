@@ -3,9 +3,10 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 
 // Auth routes
-router.post('/register', authController.register);
-router.post('/login', authController.loginWithOTP);
-router.post('/verify-otp', authController.verifyOTP);
+router.post('/register/init', authController.registerInit);
+router.post('/register/complete', authController.registerComplete);
+router.post('/login/init', authController.loginInit);
+router.post('/login/complete', authController.loginComplete);
 router.post('/logout', authController.logout);
 router.post('/refresh-token', authController.refreshToken);
 
